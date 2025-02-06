@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kids Decimal Rounding Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 10px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    #question {
+      font-size: 22px;
+      margin: 20px;
+      min-height: 30px;
+    }
+    .choices {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .choice {
+      padding: 10px 20px;
+      border: 2px solid #333;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 18px;
+      background-color: #fff;
+      transition: background-color 0.3s;
+    }
+    .choice:hover {
+      background-color: #e0e0e0;
+    }
+    .correct {
+      background-color: lightgreen !important;
+    }
+    .incorrect {
+      background-color: lightcoral !important;
+    }
+    #feedback {
+      font-size: 20px;
+      margin: 20px;
+    }
+    #starCounter {
+      display: inline-block;
+      margin-right: 20px;
+    }
+    #message {
+      display: inline-block;
+      height: 24px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Kids Decimal Rounding Game</h1>
+  <div id="question"></div>
+  <div class="choices" id="choices"></div>
+  <div id="feedback">
+    <span id="starCounter">⭐ 0</span>
+    <span id="message"></span>
+  </div>
+  
+  <script>
+    var starCount = 0;
+    // Global variables to keep track of the current question.
+    var currentNum = 0;
+    var currentRoundingType = "";
+    var currentCorrectAnswer = 0;
+    // This flag distinguishes between the main question and the guided hint question.
+    var hintActive = false;
+
+    function updateStarCounter() {
+      document.getElementById("starCounter").innerHTML = "⭐ " + starCount;
+    }
+    
+    // Generates a new rounding question.
+    function generateQuestion() {
+      hintActive = false;
+      document.getElementById("message").innerHTML = "";
+      
+      // Generate a random number between 0 and 100 with 2 decimals.
+      var num = parseFloat((Math.random() * 100).toFixed(2));
+      currentNum = num;
+      
+      // Randomly choose rounding type: "whole" or "tenth"
+      var roundingTypes = ["whole", "tenth"];
+      var roundingType = roundingTypes[Math.floor(Math.random() * roundingTypes.length)];
+      currentRoundingType = roundingType;
+      
+      // Compute the correct answer.
+      var correctAnswer;
+      if (roundingType === "whole") {
+        correctAnswer = Math.round(num);
+      } else { // "tenth"
+        correctAnswer = Math.round(num * 10) / 10;
+      }
+      currentCorrectAnswer = correctAnswer;
+      
+      // Build the question text.
+      var questionText = "Round " + num + " to the nearest " + (roundingType === "whole" ? "whole number" : "tenth");
+      document.getElementById("question").innerHTML = questionText;
+      
+      // Create choices: include the correct answer and three near misses.
+      var choices = [];
+      choices.push(correctAnswer);
+      
+      if (roundingType === "whole") {
+        var candidate1 = correctAnswer + 1;
+        var candidate2 = correctAnswer - 1;
+        var candidate3 = correctAnswer + 2;
+      } else {
+        var candidate1 = parseFloat((correctAnswer + 0.1).toFixed(1));
+        var candidate2 = parseFloat((correctAnswer - 0.1).toFixed(1));
+        var candidate3 = parseFloat((correctAnswer + 0.2).toFixed(1));
+      }
+      if (candidate1 !== correctAnswer) choices.push(candidate1);
+      if (candidate2 !== correctAnswer) choices.push(candidate2);
+      if (candidate3 !== correctAnswer) choices.push(candidate3);
+      
+      // In case we don't have 4 unique choices, generate a random offset.
+      while (choices.length < 4) {
+        var offset = (roundingType === "whole") ? Math.floor(Math.random() * 5) - 2 : parseFloat(((Math.random() * 0.4) - 0.2).toFixed(1));
+        if (offset === 0) continue;
+        var candidate = (roundingType === "whole") ? correctAnswer + offset : parseFloat((correctAnswer + offset).toFixed(1));
+        if (choices.indexOf(candidate) === -1 && candidate >= 0) {
+          choices.push(candidate);
+        }
+      }
+      
+      // Shuffle the choices.
+      for (let i = choices.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [choices[i], choices[j]] = [choices[j], choices[i]];
+      }
+      
+      // Build the choices buttons.
+      var choicesDiv = document.getElementById("choices");
+      choicesDiv.innerHTML = "";
+      choices.forEach(function(choice) {
+        var btn = document.createElement("div");
+        btn.className = "choice";
+        btn.innerHTML = choice;
+        btn.onclick = function() {
+          if (!hintActive) {
+            // Main question: if correct, celebrate and move on.
+            if (choice === correctAnswer) {
+              btn.classList.add("correct");
+              document.getElementById("message").innerHTML = "Correct! 🎉";
+              starCount++;
+              updateStarCounter();
+              setTimeout(generateQuestion, 1000);
+            } else {
+              // Wrong answer triggers the guided hint sequence.
+              btn.classList.add("incorrect");
+              // Optionally, you can deduct a star here:
+              starCount--;
+              updateStarCounter();
+              showHint(num, roundingType, correctAnswer);
+            }
+          }
+        };
+        choicesDiv.appendChild(btn);
+      });
+    }
+    
+    // Displays a hint sequence: an emoji “chops off” extra digits to help guide the student.
+    function showHint(num, roundingType, correctAnswer) {
+      hintActive = true;
+      document.getElementById("message").innerHTML = "Incorrect! ❌ But wait, here comes our helper! ✂️";
+      
+      // Get the original number as a string with 2 decimals.
+      var numStr = num.toFixed(2);
+      // Determine the target length: if rounding to whole, we want just the integer part;
+      // if rounding to the nearest tenth, we want one digit after the decimal.
+      var targetLength = (roundingType === "whole") ? numStr.indexOf('.') : numStr.indexOf('.') + 2;
+      var displayNum = numStr;
+      
+      // Animate by chopping off one digit at a time.
+      var interval = setInterval(function(){
+        if (displayNum.length > targetLength) {
+          displayNum = displayNum.slice(0, -1);
+          document.getElementById("question").innerHTML = "Round " + displayNum + " to the nearest " + (roundingType === "whole" ? "whole number" : "tenth");
+        } else {
+          clearInterval(interval);
+          document.getElementById("message").innerHTML = "Now, based on the chopped number, what is the correct rounded value?";
+          // Build a new set of choices for the guided hint question.
+          buildGuidedChoices(correctAnswer, roundingType);
+        }
+      }, 500);
+    }
+    
+    // Builds new answer choices for the guided (hint) question.
+    function buildGuidedChoices(correctAnswer, roundingType) {
+      var choicesDiv = document.getElementById("choices");
+      choicesDiv.innerHTML = "";
+      var choices = [];
+      choices.push(correctAnswer);
+      
+      if (roundingType === "whole") {
+        var candidate1 = correctAnswer + 1;
+        var candidate2 = correctAnswer - 1;
+        var candidate3 = correctAnswer + 2;
+      } else {
+        var candidate1 = parseFloat((correctAnswer + 0.1).toFixed(1));
+        var candidate2 = parseFloat((correctAnswer - 0.1).toFixed(1));
+        var candidate3 = parseFloat((correctAnswer + 0.2).toFixed(1));
+      }
+      if (candidate1 !== correctAnswer) choices.push(candidate1);
+      if (candidate2 !== correctAnswer) choices.push(candidate2);
+      if (candidate3 !== correctAnswer) choices.push(candidate3);
+      
+      // Ensure we have 4 unique choices.
+      while (choices.length < 4) {
+        var offset = (roundingType === "whole") ? Math.floor(Math.random() * 5) - 2 : parseFloat(((Math.random() * 0.4) - 0.2).toFixed(1));
+        if (offset === 0) continue;
+        var candidate = (roundingType === "whole") ? correctAnswer + offset : parseFloat((correctAnswer + offset).toFixed(1));
+        if (choices.indexOf(candidate) === -1 && candidate >= 0) {
+          choices.push(candidate);
+        }
+      }
+      
+      // Shuffle the guided choices.
+      for (let i = choices.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [choices[i], choices[j]] = [choices[j], choices[i]];
+      }
+      
+      // Create buttons for the guided choices.
+      choices.forEach(function(choice) {
+        var btn = document.createElement("div");
+        btn.className = "choice";
+        btn.innerHTML = choice;
+        btn.onclick = function() {
+          if (choice === correctAnswer) {
+            btn.classList.add("correct");
+            document.getElementById("message").innerHTML = "Correct! 🎉";
+            starCount++;
+            updateStarCounter();
+            setTimeout(generateQuestion, 1000);
+          } else {
+            btn.classList.add("incorrect");
+            document.getElementById("message").innerHTML = "Not quite! Try again.";
+          }
+        };
+        choicesDiv.appendChild(btn);
+      });
+    }
+    
+    window.onload = function() {
+      updateStarCounter();
+      generateQuestion();
+    };
+  </script>
+</body>
+</html>
